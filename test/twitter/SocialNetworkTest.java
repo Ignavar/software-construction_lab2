@@ -5,6 +5,7 @@ package twitter;
 
 import static org.junit.Assert.*;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,5 +55,92 @@ public class SocialNetworkTest {
      * define them in a different class. If you only need them in this test
      * class, then keep them in this test class.
      */
+    
+    @Test
+    public void testGuessFollowsGraphEmptyTweets() {
+        List<Tweet> tweets = new ArrayList<>();
+        Map<String, Set<String>> graph = SocialNetwork.guessFollowsGraph(tweets);
+        assertTrue("Expected an empty graph for empty tweet list", graph.isEmpty());
+    }
+    
+    @Test
+    public void testGuessFollowsGraphNoMentions() {
+        List<Tweet> tweets = List.of(new Tweet(1, "alice", "hello world", Instant.now()));
+        Map<String, Set<String>> graph = SocialNetwork.guessFollowsGraph(tweets);
+        assertTrue( "Expected an empty graph when no mentions are present",graph.isEmpty());
+    }
+    
+    @Test
+    public void testGuessFollowsGraphSingleMention() {
+        List<Tweet> tweets = List.of(new Tweet(1, "alice", "hello @bob", Instant.now()));
+        Map<String, Set<String>> graph = SocialNetwork.guessFollowsGraph(tweets);
+        assertTrue(graph.containsKey("alice"));
+        assertTrue("Expected alice to follow bob",graph.get("alice").contains("bob"));
+    }
+    
+    @Test
+    public void testGuessFollowsGraphMultipleMentions() {
+        List<Tweet> tweets = List.of(new Tweet(1, "alice", "hi @bob @charlie", Instant.now()));
+        Map<String, Set<String>> graph = SocialNetwork.guessFollowsGraph(tweets);
+        assertTrue(graph.containsKey("alice"));
+        assertTrue(graph.get("alice").contains("bob"));
+        assertTrue(graph.get("alice").contains("charlie"));
+    }
+
+    @Test
+    public void testGuessFollowsGraphMultipleTweetsSameAuthor() {
+        List<Tweet> tweets = List.of(
+            new Tweet(1, "alice", "hi @bob", Instant.now()),
+            new Tweet(2, "alice", "hello @charlie", Instant.now())
+        );
+        Map<String, Set<String>> graph = SocialNetwork.guessFollowsGraph(tweets);
+        assertTrue(graph.get("alice").containsAll(Set.of("bob", "charlie")));
+    }
+
+
+    @Test
+    public void testInfluencersEmptyFollowsGraph() {
+        Map<String, Set<String>> followsGraph = new HashMap<>();
+        List<String> influencers = SocialNetwork.influencers(followsGraph);
+        assertTrue( "Expected no influencers in an empty graph",influencers.isEmpty());
+    }
+    
+    @Test
+    public void testInfluencersSingleUserNoFollowers() {
+        Map<String, Set<String>> followsGraph = Map.of("alice", Set.of());
+        List<String> influencers = SocialNetwork.influencers(followsGraph);
+        assertTrue("Expected no influencers when user has no followers",influencers.isEmpty());
+    }
+
+    @Test
+    public void testInfluencersSingleInfluencer() {
+        Map<String, Set<String>> followsGraph = Map.of(
+            "alice", Set.of("bob"),
+            "charlie", Set.of("bob")
+        );
+        List<String> influencers = SocialNetwork.influencers(followsGraph);
+        assertEquals("Expected bob to be the top influencer",List.of("bob"), influencers);
+    }
+    
+    @Test
+    public void testInfluencersMultipleInfluencers() {
+        Map<String, Set<String>> followsGraph = Map.of(
+            "alice", Set.of("bob", "charlie"),
+            "david", Set.of("charlie"),
+            "edward", Set.of("bob")
+        );
+        List<String> influencers = SocialNetwork.influencers(followsGraph);
+        assertEquals(List.of("bob", "charlie"), influencers.subList(0, 2));
+    }
+    
+    @Test
+    public void testInfluencersEqualFollowers() {
+        Map<String, Set<String>> followsGraph = Map.of(
+            "alice", Set.of("bob", "charlie"),
+            "david", Set.of("bob", "charlie")
+        );
+        List<String> influencers = SocialNetwork.influencers(followsGraph);
+        assertTrue(influencers.containsAll(List.of("bob", "charlie")));
+    }
 
 }

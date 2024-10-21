@@ -3,9 +3,14 @@
  */
 package twitter;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * SocialNetwork provides methods that operate on a social network.
@@ -40,8 +45,28 @@ public class SocialNetwork {
      *         All the Twitter usernames in the returned social network must be
      *         either authors or @-mentions in the list of tweets.
      */
-    public static Map<String, Set<String>> guessFollowsGraph(List<Tweet> tweets) {
-        throw new RuntimeException("not implemented");
+	public static Map<String, Set<String>> guessFollowsGraph(List<Tweet> tweets) {
+        Map<String, Set<String>> followsGraph = new HashMap<>();
+        Pattern mentionPattern = Pattern.compile("@([A-Za-z0-9_]+)");
+
+        for (Tweet tweet : tweets) {
+            String author = tweet.getAuthor().toLowerCase();
+            String text = tweet.getText();
+
+            // Find all @mentions in the tweet
+            Matcher matcher = mentionPattern.matcher(text);
+            while (matcher.find()) {
+                String mentionedUser = matcher.group(1).toLowerCase();
+                
+                // Skip if author mentions themselves
+                if (!author.equals(mentionedUser)) {
+                    followsGraph.putIfAbsent(author, new HashSet<>());
+                    followsGraph.get(author).add(mentionedUser);
+                }
+            }
+        }
+
+        return followsGraph;
     }
 
     /**
@@ -54,7 +79,19 @@ public class SocialNetwork {
      *         descending order of follower count.
      */
     public static List<String> influencers(Map<String, Set<String>> followsGraph) {
-        throw new RuntimeException("not implemented");
-    }
+        Map<String, Integer> followerCounts = new HashMap<>();
 
+        // Count the number of followers each user has
+        for (Set<String> follows : followsGraph.values()) {
+            for (String followedUser : follows) {
+                followerCounts.put(followedUser, followerCounts.getOrDefault(followedUser, 0) + 1);
+            }
+        }
+
+        // Create a list of users sorted by follower count
+        List<String> influencers = new ArrayList<>(followerCounts.keySet());
+        influencers.sort((u1, u2) -> followerCounts.get(u2).compareTo(followerCounts.get(u1)));
+
+        return influencers;
+    }
 }
